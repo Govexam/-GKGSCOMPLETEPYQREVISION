@@ -8,190 +8,180 @@ import time
 # ==========================================
 # 1. BOT SETTINGS
 # ==========================================
-# Aapka asli Token yahan set ho gaya hai
+# Aapka Token aur Secret Code set hai
 BOT_TOKEN = "8665786518:AAHzrG19WCAu-AuTt1LZBeqm446eoV0n-zs"
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# Aapka Secret Code (Jo user ko denge Paid Course ke liye)
 SECRET_CODE = "dkstudio"
-
-# Jin users ne code daal diya hai, unka data yahan save rahega
 unlocked_users = set()
 
-# Aapke Chapters aur Questions yahan hain
+# Quiz Data (Official Polls ke limits: Question < 300 chars, Options < 100 chars)
 courses_data = {
     "chap_1": {
         "title": "Chapter 1: BPSC AEDO F.L.T. 16 (FREE DEMO 🟢)",
         "is_free": True,
         "questions": [
             {
-                "q": "Begum Khaleda Zia kitni baar Bangladesh ki PM rahi?",
-                "options": ["3 Baar", "5 Baar", "2 Baar", "Inme se koi nahi"],
+                "q": "Begum Khaleda Zia, Bangladesh's first female PM, passed away. How many times did she serve as PM?",
+                "options": ["Three times", "Five times", "Twice", "None of these"],
                 "ans": 0,
-                "expl": "Sahi Jawab: 3 Baar. (1991–1996, 1996, 2001–2006)\n@GKGSCOMPLETEPYQREVISION_bot"
+                "expl": "Served 3 terms: 1991–1996, 1996, and 2001–2006. \n\nJoin: @GKGSCOMPLETEPYQREVISION_bot"
             },
             {
-                "q": "Bihar ka pehla vidyut sangrahalaya (power museum) kahan banega?",
-                "options": ["Karbighhia", "Pataliputra", "Digha", "Gaya"],
+                "q": "Indian PM Modi inaugurated 'Sacred Piprahwa Relics' exhibition. These belong to which religion?",
+                "options": ["Buddhism", "Jain", "Sikh", "Hindu"],
                 "ans": 0,
-                "expl": "Sahi Jawab: Karbighhia thermal power station complex me.\n@GKGSCOMPLETEPYQREVISION_bot"
+                "expl": "Piprahwa relics are bone fragments of Lord Buddha, found in UP. \n\nJoin: @GKGSCOMPLETEPYQREVISION_bot"
             }
         ]
     },
     "chap_2": {
-        "title": "Chapter 2: K-4 Missile & Current Affairs (PAID 🔴)",
+        "title": "Chapter 2: K-4 Missile & Defense (PAID 🔴)",
         "is_free": False,
         "questions": [
             {
-                "q": "K-4 missile ki maar-kshamta (range) kitni hai?",
-                "options": ["1500 km", "3500 km se adhik", "5000 km", "2000 km"],
+                "q": "Identify the correct statement about 'K-4' missile:\nI. Range > 3500 km\nII. Nuclear-capable SLBM\nIII. Developed with Russia",
+                "options": ["Only I", "I and II", "Only III", "All of the above"],
                 "ans": 1,
-                "expl": "Sahi Jawab: 3500 km se adhik. Ye ek submarine-launched ballistic missile (SLBM) hai.\n@GKGSCOMPLETEPYQREVISION_bot"
+                "expl": "K-4 is indigenously developed by India's DRDO, not with Russia. \n\nJoin: @GKGSCOMPLETEPYQREVISION_bot"
             },
             {
-                "q": "Haal hi me kis desh ne Somaliland ko swatantra rashtra ki manyata di?",
+                "q": "Which country recently became the first to formally recognize Somaliland as an independent nation?",
                 "options": ["Syria", "India", "Somalia", "Israel"],
                 "ans": 3,
-                "expl": "Sahi Jawab: Israel.\n@GKGSCOMPLETEPYQREVISION_bot"
+                "expl": "Israel is noted for specific diplomatic recognition in current affairs context. \n\nJoin: @GKGSCOMPLETEPYQREVISION_bot"
             }
         ]
     }
 }
 
-user_state = {}
+# User progress track karne ke liye
+user_quiz_state = {}
 
 # ==========================================
-# 2. DUMMY WEB SERVER (Render ke liye zaruri hai taki error na aaye)
+# 2. DUMMY WEB SERVER (For Render 24/7)
 # ==========================================
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "BPSC Bot is running 24/7 successfully! 🔥 (Powered by GitHub & Render)"
+    return "Official Quiz Bot is Live & Running! 🎉"
 
 # ==========================================
-# 3. BOT KA LOGIC
+# 3. BOT LOGIC (OFFICIAL QUIZ MODE)
 # ==========================================
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     chat_id = message.chat.id
+    
+    # Reset user state on start
+    if chat_id in user_quiz_state:
+        del user_quiz_state[chat_id]
+
     welcome_text = (
-        "📚 *BPSC Complete PYQ Course me aapka swagat hai!*\n\n"
-        "🌟 *Naye users ke liye FREE DEMO uplabdh hai!* Niche 'Chapter 1' par click karke test try karein.\n\n"
-        "*(Note: Paid chapters ko unlock karne ke liye apna 'Access Code' yahan chat me type karke bhejein)*"
+        "🤖 *Welcome to Official BPSC Quiz Bot!*\n\n"
+        "Yahan aapko asli Telegram Quiz experience milega (Fawara animation ke saath).\n\n"
+        "🟢 *Chapter 1* bilkul FREE hai.\n"
+        "🔒 *Paid Chapters* unlock karne ke liye apna Access Code bhejein (Example: `dkstudio`)."
     )
+    
     markup = InlineKeyboardMarkup(row_width=1)
     for chap_id, chap_info in courses_data.items():
         icon = "🟢" if chap_info['is_free'] else ("📖" if chat_id in unlocked_users else "🔒")
-        btn = InlineKeyboardButton(f"{icon} {chap_info['title']}", callback_data=f"start_{chap_id}")
+        btn = InlineKeyboardButton(f"{icon} {chap_info['title']}", callback_data=f"menu_{chap_id}")
         markup.add(btn)
+        
     bot.send_message(chat_id, welcome_text, reply_markup=markup, parse_mode="Markdown")
 
-@bot.message_handler(func=lambda message: True, content_types=['text'])
-def handle_text_messages(message):
+@bot.message_handler(func=lambda message: True)
+def handle_text(message):
     chat_id = message.chat.id
-    user_text = message.text.strip().lower()
+    text = message.text.strip().lower()
     
-    if user_text == SECRET_CODE.lower():
+    if text == SECRET_CODE.lower():
         unlocked_users.add(chat_id)
-        success_msg = "🎉 *Badhai ho!*\n\nAapka Access Code sahi hai aur *Pura Course UNLOCK* ho gaya hai! ✅\n\nKripya wapas /start type karein aur apne saare premium chapters padhna shuru karein."
-        bot.send_message(chat_id, success_msg, parse_mode="Markdown")
+        bot.send_message(chat_id, "✅ *Success!* Pura course unlock ho gaya hai.\nAb /start dabayein aur paid chapters shuru karein.", parse_mode="Markdown")
     else:
-        bot.send_message(chat_id, "❌ *Invalid Code!*\nAgar aapko Premium Course ka Access Code chahiye, toh kripya Admin se sampark karein.", parse_mode="Markdown")
+        bot.send_message(chat_id, "❌ *Invalid Code!* Sahi code type karein ya Admin se sampark karein.")
 
-@bot.callback_query_handler(func=lambda call: True)
-def handle_query(call):
+@bot.callback_query_handler(func=lambda call: call.data.startswith("menu_"))
+def handle_menu(call):
     chat_id = call.message.chat.id
-    if call.data.startswith("start_"):
-        chap_id = call.data.split("start_")[1]
-        chap_info = courses_data[chap_id]
-        
-        # Check karna ki chapter paid toh nahi
-        if not chap_info["is_free"] and chat_id not in unlocked_users:
-            lock_msg = "🔒 *Ye Chapter PAID hai!*\n\nIse access karne ke liye apna Access Code chat me type karke bhejein.\n👉 *(Course kharidne ke liye admin se baat karein)*"
-            bot.send_message(chat_id, lock_msg, parse_mode="Markdown")
-            return
-            
-        user_state[chat_id] = {"current_chap": chap_id, "current_q": 0, "score": 0}
-        send_question(chat_id)
-        
-    elif call.data.startswith("ans_"):
-        selected_opt = int(call.data.split("_")[1])
-        state = user_state.get(chat_id)
-        
-        if not state:
-            bot.send_message(chat_id, "⏳ Test expire ho gaya. Kripya /start type karke wapas shuru karein.")
-            return
-            
-        chap_id = state["current_chap"]
-        current_q_index = state["current_q"]
-        q_data = courses_data[chap_id]["questions"][current_q_index]
-        
-        # Jawab check karna
-        if selected_opt == q_data["ans"]:
-            state["score"] += 1
-            bot.send_message(chat_id, "✅ *Sahi Jawab!*\n\n" + q_data["expl"], parse_mode="Markdown")
-        else:
-            bot.send_message(chat_id, "❌ *Galat Jawab!*\n\n" + q_data["expl"], parse_mode="Markdown")
-        
-        # Agla sawal
-        state["current_q"] += 1
-        if state["current_q"] < len(courses_data[chap_id]["questions"]):
-            # Thoda delay dalte hain taki Telegram block na kare
-            time.sleep(1)
-            send_question(chat_id)
-        else:
-            show_result(chat_id)
+    chap_id = call.data.split("_")[1]
+    
+    # Check Access
+    if not courses_data[chap_id]["is_free"] and chat_id not in unlocked_users:
+        bot.send_message(chat_id, "🔒 *Chapter Locked!*\nIse access karne ke liye Access Code bhejein.", parse_mode="Markdown")
+        return
 
-def send_question(chat_id):
-    state = user_state[chat_id]
-    chap_id = state["current_chap"]
-    q_index = state["current_q"]
-    q_data = courses_data[chap_id]["questions"][q_index]
-    
-    markup = InlineKeyboardMarkup(row_width=1)
-    for i, opt in enumerate(q_data["options"]):
-        btn = InlineKeyboardButton(opt, callback_data=f"ans_{i}")
-        markup.add(btn)
-        
-    chap_title = courses_data[chap_id]["title"]
-    bot.send_message(chat_id, f"*{chap_title}*\n\n👉 Q{q_index + 1}: {q_data['q']}", reply_markup=markup, parse_mode="Markdown")
+    # Start Quiz State
+    user_quiz_state[chat_id] = {"chap": chap_id, "q_idx": 0}
+    bot.send_message(chat_id, f"🚀 *Starting {courses_data[chap_id]['title']}...*", parse_mode="Markdown")
+    send_next_poll(chat_id)
 
-def show_result(chat_id):
-    state = user_state[chat_id]
-    score = state["score"]
-    chap_id = state["current_chap"]
-    total = len(courses_data[chap_id]["questions"])
-    is_free = courses_data[chap_id]["is_free"]
+def send_next_poll(chat_id):
+    state = user_quiz_state.get(chat_id)
+    if not state: return
     
-    result_text = f"🎉 *TEST COMPLETED!* 🎉\n\n📝 Aapka Score: *{score} / {total}*\n\n"
+    chap_id = state["chap"]
+    q_idx = state["q_idx"]
+    questions = courses_data[chap_id]["questions"]
     
-    # Marketing Flow
-    if is_free and chat_id not in unlocked_users:
-        result_text += "💡 *Kaisa laga Demo Test?*\n\nPremium chapters (PAID 🔴) padhne ke liye apna *Access Code* (Jaise: dkstudio) yahan chat me bhejein.\n\n@GKGSCOMPLETEPYQREVISION_bot"
+    if q_idx < len(questions):
+        q = questions[q_idx]
+        
+        # ASLI TELEGRAM POLL (Quiz Mode)
+        # Isse 'Confetti' animation khud aayega
+        bot.send_poll(
+            chat_id=chat_id,
+            question=f"Q{q_idx+1}: {q['q']}",
+            options=q["options"],
+            type='quiz',
+            correct_option_id=q["ans"],
+            explanation=q["expl"],
+            is_anonymous=False # Progress track karne ke liye false hona chahiye
+        )
     else:
-        result_text += "Dusra Chapter padhne ke liye wapas /start bhejein.\n\n@GKGSCOMPLETEPYQREVISION_bot"
+        # Result and Demo prompt
+        is_free = courses_data[chap_id]["is_free"]
+        msg = "🏁 *Quiz Khatam!*"
+        if is_free and chat_id not in unlocked_users:
+            msg += "\n\nAgar demo pasand aaya toh pura course unlock karne ke liye code `dkstudio` bhejein."
         
-    bot.send_message(chat_id, result_text, parse_mode="Markdown")
+        bot.send_message(chat_id, msg + "\n\nJoin: @GKGSCOMPLETEPYQREVISION_bot", parse_mode="Markdown")
+        if chat_id in user_quiz_state:
+            del user_quiz_state[chat_id]
+
+# User jab poll par click karega, ye trigger hoga
+@bot.poll_answer_handler(func=lambda answer: True)
+def handle_poll_answer(answer):
+    chat_id = answer.user.id
+    state = user_quiz_state.get(chat_id)
+    
+    if state:
+        # Agle sawal pe bhejna (1.5 second ka delay taki user result dekh sake)
+        state["q_idx"] += 1
+        time.sleep(1.5)
+        send_next_poll(chat_id)
 
 # ==========================================
-# 4. STARTING THE SERVER & BOT
+# 4. STARTING THE ENGINE
 # ==========================================
 def run_bot():
-    print("Bot shuru ho gaya hai! Telegram par check karein...")
-    # Polling me auto-retry lagaya hai taki server band na ho
+    print("Bot is polling in Official Quiz Mode...")
     while True:
         try:
             bot.polling(none_stop=True, interval=0, timeout=20)
         except Exception as e:
-            print("Error aaya:", e)
+            print(f"Error: {e}")
             time.sleep(5)
 
 if __name__ == "__main__":
-    # Bot ko background thread me chalayenge
+    # Start Bot in Background
     bot_thread = threading.Thread(target=run_bot)
     bot_thread.start()
     
-    # Web server ko main thread me chalayenge (Render ko yahi chahiye)
+    # Start Web Server for Render
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
